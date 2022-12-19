@@ -24,6 +24,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import com.example.android.unscramble.R
 import com.example.android.unscramble.databinding.GameFragmentBinding
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
  * Fragment where the game is played, contains the game logic.
@@ -31,6 +32,7 @@ import com.example.android.unscramble.databinding.GameFragmentBinding
 class GameFragment : Fragment() {
 
     // Attach the ViewModel to the Fragment
+    // Delegate class (setter and getter for object )
     private val viewModel : GameViewModel by viewModels()
 
     // Binding object instance with access to the views in the game_fragment.xml layout
@@ -54,43 +56,52 @@ class GameFragment : Fragment() {
 
         // Setup a click listener for the Submit and Skip buttons.
         binding.submit.setOnClickListener {
-            //onSubmitWord()
+            onSubmitWord()
         }
         binding.skip.setOnClickListener {
-            //onSkipWord()
+            onSkipWord()
         }
         // Update the UI
         updateNextWordOnScreen()
-        binding.score.text = getString(R.string.score, 0)
+        binding.score.text = getString(R.string.score, viewModel.score)
         binding.wordCount.text = getString(
-                R.string.word_count, 0, MAX_NO_OF_WORDS)
+                R.string.word_count, viewModel.currentWordCount, MAX_NO_OF_WORDS)
     }
 
     /*
     * Checks the user's word, and updates the score accordingly.
     * Displays the next scrambled word.
     */
-//    private fun onSubmitWord() {
-//        currentScrambledWord = getNextScrambledWord()
-//        currentWordCount++
-//        score += SCORE_INCREASE
-//        binding.wordCount.text = getString(R.string.word_count, currentWordCount, MAX_NO_OF_WORDS)
-//        binding.score.text = getString(R.string.score, score)
-//        setErrorTextField(false)
-//        updateNextWordOnScreen()
-//    }
+    private fun onSubmitWord() {
+
+        // save user input
+        val playWord = binding.textInputEditText.text.toString()
+
+        if (viewModel.isUserWordCorrect(playWord)){
+            // if thw word is correct
+            // do the following
+            setErrorTextField(false)
+            if(viewModel.nextWord()){ // if true (currentWordCount < MAX_NO_OF_WORDS)
+                updateNextWordOnScreen()
+            } else { // end of the game
+                showFinalScoreDialog()
+            }
+        } else {setErrorTextField(true)} // if input is false
+    }
 
     /*
      * Skips the current word without changing the score.
      * Increases the word count.
      */
-//    private fun onSkipWord() {
-//        currentScrambledWord = getNextScrambledWord()
-//        currentWordCount++
-//        binding.wordCount.text = getString(R.string.word_count, currentWordCount, MAX_NO_OF_WORDS)
-//        setErrorTextField(false)
-//        updateNextWordOnScreen()
-//    }
+    private fun onSkipWord() {
+        if (viewModel.nextWord()){
+            setErrorTextField(false)
+            updateNextWordOnScreen()
+        } else {
+            showFinalScoreDialog()
+        }
+
+    }
 
     /*
      * Gets a random word for the list of words and shuffles the letters in it.
@@ -106,6 +117,7 @@ class GameFragment : Fragment() {
      * restart the game.
      */
     private fun restartGame() {
+        viewModel.reinitializeData()
         setErrorTextField(false)
         updateNextWordOnScreen()
     }
@@ -135,5 +147,27 @@ class GameFragment : Fragment() {
      */
     private fun updateNextWordOnScreen() {
         binding.textViewUnscrambledWord.text = viewModel.currentScrambledWord
+        binding.score.text = getString(R.string.score, viewModel.score)
+        binding.wordCount.text = getString(
+            R.string.word_count, viewModel.currentWordCount, MAX_NO_OF_WORDS)
+
     }
-}
+
+    /*
+    * Creates and shows an AlertDialog with the final score.
+    */
+    private fun showFinalScoreDialog(){
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(getString(R.string.congratulations))
+            .setMessage(getString(R.string.you_scored, viewModel.score))
+            .setCancelable(false)
+            .setNegativeButton(getString(R.string.exit)){ _ , _ ->
+                exitGame()
+            }
+            .setPositiveButton(getString(R.string.play_again)){ _ , _ ->
+                restartGame()
+            }
+            .show()
+    }// end showFinalScoreDialog
+
+} // end fragment
